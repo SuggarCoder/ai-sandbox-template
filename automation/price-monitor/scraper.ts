@@ -8,11 +8,34 @@ export async function collectPriceRecords(logger: Logger): Promise<NormalizedRec
   const session = await createBrowserSession();
 
   try {
-    const [amazon, costcoUs, costcoCa] = await Promise.all([
+    const settled = await Promise.allSettled([
       scrapeAmazon(session),
       scrapeCostcoUs(session),
       scrapeCostcoCa(session)
     ]);
+
+    const [amazonResult, costcoUsResult, costcoCaResult] = settled;
+    const amazon = amazonResult.status === "fulfilled" ? amazonResult.value : [];
+    const costcoUs = costcoUsResult.status === "fulfilled" ? costcoUsResult.value : [];
+    const costcoCa = costcoCaResult.status === "fulfilled" ? costcoCaResult.value : [];
+
+    if (amazonResult.status === "rejected") {
+      logger.warn("Amazon scrape failed, continue with other platforms", {
+        reason: amazonResult.reason instanceof Error ? amazonResult.reason.message : "Unknown"
+      });
+    }
+
+    if (costcoUsResult.status === "rejected") {
+      logger.warn("Costco US scrape failed, continue with other platforms", {
+        reason: costcoUsResult.reason instanceof Error ? costcoUsResult.reason.message : "Unknown"
+      });
+    }
+
+    if (costcoCaResult.status === "rejected") {
+      logger.warn("Costco CA scrape failed, continue with other platforms", {
+        reason: costcoCaResult.reason instanceof Error ? costcoCaResult.reason.message : "Unknown"
+      });
+    }
 
     const all = [...amazon, ...costcoUs, ...costcoCa];
     const filtered = normalizeAndFilter(all);

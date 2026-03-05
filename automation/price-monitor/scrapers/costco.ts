@@ -69,6 +69,23 @@ async function parseCostcoPrice(page: any): Promise<number | null> {
   return null;
 }
 
+async function gotoWithRetry(page: any, url: string) {
+  let lastError: unknown;
+  const attempts: Array<"domcontentloaded" | "load" | "commit"> = ["domcontentloaded", "load", "commit"];
+
+  for (const waitUntil of attempts) {
+    try {
+      await page.goto(url, { waitUntil, timeout: 45000 });
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(900);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(`Failed to navigate: ${url}`);
+}
+
 async function scrapeCostcoPlatform(
   session: BrowserSession,
   platform: "Costco_US" | "Costco_CA",
@@ -78,34 +95,38 @@ async function scrapeCostcoPlatform(
   const currency = platform === "Costco_CA" ? "CAD" : "USD";
 
   for (const target of targets) {
-    const row = await session.withPage(async (page) => {
-      await page.goto(target.url, { waitUntil: "domcontentloaded", timeout: 45000 });
-      await setZipOrPostalCode(page, platform);
-      await page.waitForTimeout(1200);
+    try {
+      const row = await session.withPage(async (page) => {
+        await gotoWithRetry(page, target.url);
+        await setZipOrPostalCode(page, platform);
+        await page.waitForTimeout(1200);
 
-      const title =
-        (await page.locator("h1").first().textContent().catch(() => ""))?.trim() ?? `Unknown ${platform} Item`;
-      const price = await parseCostcoPrice(page);
-      const stockText = (await page.textContent("body").catch(() => ""))?.toLowerCase() ?? "";
+        const title =
+          (await page.locator("h1").first().textContent().catch(() => ""))?.trim() ?? `Unknown ${platform} Item`;
+        const price = await parseCostcoPrice(page);
+        const stockText = (await page.textContent("body").catch(() => ""))?.toLowerCase() ?? "";
 
-      if (!price) {
-        return null;
+        if (!price) {
+          return null;
+        }
+
+        return {
+          model: target.hintModel ?? "M4_Pro",
+          platform,
+          title,
+          price,
+          currency,
+          url: target.url,
+          inStock: !/out of stock|sold out|unavailable/.test(stockText),
+          scrapedAt: new Date().toISOString()
+        } satisfies ScrapeRecord;
+      });
+
+      if (row) {
+        results.push(row);
       }
-
-      return {
-        model: target.hintModel ?? "M4_Pro",
-        platform,
-        title,
-        price,
-        currency,
-        url: target.url,
-        inStock: !/out of stock|sold out|unavailable/.test(stockText),
-        scrapedAt: new Date().toISOString()
-      } satisfies ScrapeRecord;
-    });
-
-    if (row) {
-      results.push(row);
+    } catch {
+      continue;
     }
   }
 

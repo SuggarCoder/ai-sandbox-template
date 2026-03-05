@@ -43,53 +43,75 @@ function isCaptcha(pageContent: string) {
   return /captcha|enter the characters you see/i.test(pageContent);
 }
 
+async function gotoWithRetry(page: any, url: string) {
+  let lastError: unknown;
+  const attempts: Array<"domcontentloaded" | "load" | "commit"> = ["domcontentloaded", "load", "commit"];
+
+  for (const waitUntil of attempts) {
+    try {
+      await page.goto(url, { waitUntil, timeout: 45000 });
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(900);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(`Failed to navigate: ${url}`);
+}
+
 export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecord[]> {
   const results: ScrapeRecord[] = [];
 
   for (const target of activeAmazonTargets) {
     const url = `https://www.amazon.com/dp/${target.asin}`;
 
-    const row = await session.withPage(async (page) => {
-      let retries = 0;
-      while (retries < 3) {
-        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
-        const html = await page.content();
+    try {
+      const row = await session.withPage(async (page) => {
+        let retries = 0;
+        while (retries < 3) {
+          await gotoWithRetry(page, url);
+          const html = await page.content();
 
-        if (isCaptcha(html)) {
-          retries += 1;
-          await page.waitForTimeout(1200 * retries);
-          continue;
+          if (isCaptcha(html)) {
+            retries += 1;
+            await page.waitForTimeout(1200 * retries);
+            continue;
+          }
+
+          await page.waitForTimeout(1000);
+          const title =
+            (await page.locator("#productTitle").first().textContent().catch(() => ""))?.trim() ??
+            "Unknown Amazon Item";
+
+          const price = await parseAmazonPrice(page);
+          const inStockText =
+            (await page.locator("#availability").first().textContent().catch(() => ""))?.trim().toLowerCase() ?? "";
+
+          if (!price) {
+            return null;
+          }
+
+          return {
+            model: target.hintModel ?? "M4_Pro",
+            platform: "Amazon",
+            title,
+            price,
+            currency: "USD",
+            url,
+            inStock: !inStockText.includes("unavailable"),
+            scrapedAt: new Date().toISOString()
+          } satisfies ScrapeRecord;
         }
 
-        await page.waitForTimeout(1000);
-        const title =
-          (await page.locator("#productTitle").first().textContent().catch(() => ""))?.trim() ?? "Unknown Amazon Item";
+        return null;
+      });
 
-        const price = await parseAmazonPrice(page);
-        const inStockText =
-          (await page.locator("#availability").first().textContent().catch(() => ""))?.trim().toLowerCase() ?? "";
-
-        if (!price) {
-          return null;
-        }
-
-        return {
-          model: target.hintModel ?? "M4_Pro",
-          platform: "Amazon",
-          title,
-          price,
-          currency: "USD",
-          url,
-          inStock: !inStockText.includes("unavailable"),
-          scrapedAt: new Date().toISOString()
-        } satisfies ScrapeRecord;
+      if (row) {
+        results.push(row);
       }
-
-      return null;
-    });
-
-    if (row) {
-      results.push(row);
+    } catch {
+      continue;
     }
   }
 
