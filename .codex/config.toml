@@ -1,0 +1,6 @@
+
+[mcp_servers.alaska]
+command = "node"
+args = ["/usr/local/lib/node_modules/alaska-ai/dist/mcp/entry.js", "--channel", "C0AJKFFUHD1", "--thread", "1772718817.889279", "--project-dir", "/root/slack/alaska-ai", "--platform", "slack", "--ipc-port", "43983", "--ipc-secret", "06a5a1e4-fe4c-40a6-8b5f-fdf60869f63c", "--actor-team", "T027FAQLQ5N", "--actor-user", "U026XRUJ0LC", "--actor-channel-type", "channel"]
+enabled = true
+env = { ALASKA_IPC_PORT = "43983", ALASKA_IPC_SECRET = "06a5a1e4-fe4c-40a6-8b5f-fdf60869f63c" }
