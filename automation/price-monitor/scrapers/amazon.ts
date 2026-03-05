@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { logger } from "../config";
 import type { ScrapeRecord } from "../types";
 import type { BrowserSession } from "./playwright-runtime";
 
@@ -62,6 +63,10 @@ async function gotoWithRetry(page: any, url: string) {
 
 export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecord[]> {
   const results: ScrapeRecord[] = [];
+  if (activeAmazonTargets.length === 0) {
+    logger.warn("Amazon targets missing. Check AMAZON_ASIN_* secrets.");
+    return results;
+  }
 
   for (const target of activeAmazonTargets) {
     const url = `https://www.amazon.com/dp/${target.asin}`;
@@ -89,6 +94,7 @@ export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecor
             (await page.locator("#availability").first().textContent().catch(() => ""))?.trim().toLowerCase() ?? "";
 
           if (!price) {
+            logger.warn("Amazon price not found", { url });
             return null;
           }
 
@@ -110,7 +116,11 @@ export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecor
       if (row) {
         results.push(row);
       }
-    } catch {
+    } catch (error) {
+      logger.warn("Amazon scrape target failed", {
+        url,
+        reason: error instanceof Error ? error.message : "Unknown"
+      });
       continue;
     }
   }

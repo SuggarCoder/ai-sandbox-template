@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { logger } from "../config";
 import type { ScrapeRecord } from "../types";
 import type { BrowserSession } from "./playwright-runtime";
 
@@ -107,6 +108,7 @@ async function scrapeCostcoPlatform(
         const stockText = (await page.textContent("body").catch(() => ""))?.toLowerCase() ?? "";
 
         if (!price) {
+          logger.warn("Costco price not found", { url: target.url, platform });
           return null;
         }
 
@@ -125,7 +127,12 @@ async function scrapeCostcoPlatform(
       if (row) {
         results.push(row);
       }
-    } catch {
+    } catch (error) {
+      logger.warn("Costco scrape target failed", {
+        url: target.url,
+        platform,
+        reason: error instanceof Error ? error.message : "Unknown"
+      });
       continue;
     }
   }
@@ -134,9 +141,15 @@ async function scrapeCostcoPlatform(
 }
 
 export async function scrapeCostcoUs(session: BrowserSession): Promise<ScrapeRecord[]> {
+  if (activeCostcoUsTargets.length === 0) {
+    logger.warn("Costco US targets missing. Check COSTCO_US_* secrets.");
+  }
   return scrapeCostcoPlatform(session, "Costco_US", activeCostcoUsTargets);
 }
 
 export async function scrapeCostcoCa(session: BrowserSession): Promise<ScrapeRecord[]> {
+  if (activeCostcoCaTargets.length === 0) {
+    logger.warn("Costco CA targets missing. Check COSTCO_CA_* secrets.");
+  }
   return scrapeCostcoPlatform(session, "Costco_CA", activeCostcoCaTargets);
 }

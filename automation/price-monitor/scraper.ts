@@ -41,6 +41,9 @@ export async function collectPriceRecords(logger: Logger): Promise<NormalizedRec
     const filtered = normalizeAndFilter(all);
 
     logger.info("Scrape completed", {
+      amazonCount: amazon.length,
+      costcoUsCount: costcoUs.length,
+      costcoCaCount: costcoCa.length,
       rawCount: all.length,
       filteredCount: filtered.length
     });
