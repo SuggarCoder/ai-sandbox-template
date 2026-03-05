@@ -10,12 +10,21 @@ export async function createBrowserSession(): Promise<BrowserSession> {
   const { chromium } = await dynamicImport("playwright");
   const browser = await chromium.launch({
     headless: true,
-    args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"]
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--disable-http2",
+      "--disable-quic",
+      "--no-sandbox"
+    ]
   });
 
   const context = await browser.newContext({
     locale: "en-US",
+    ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 960 },
+    extraHTTPHeaders: {
+      "accept-language": "en-US,en;q=0.9"
+    },
     userAgent:
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
   });

@@ -110,6 +110,7 @@ export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecor
           } satisfies ScrapeRecord;
         }
 
+        logger.warn("Amazon captcha retry exhausted", { url });
         return null;
       });
 
