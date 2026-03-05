@@ -1,0 +1,41 @@
+name: Price Monitor
+
+on:
+  schedule:
+    - cron: "0 0,6,12,18 * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape-and-store:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright runtime
+        run: npm install --no-save playwright
+
+      - name: Run price monitor
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CAD_TO_USD: ${{ secrets.CAD_TO_USD }}
+          AMAZON_ASIN_M4_1: ${{ secrets.AMAZON_ASIN_M4_1 }}
+          AMAZON_ASIN_M4_2: ${{ secrets.AMAZON_ASIN_M4_2 }}
+          AMAZON_ASIN_M5_1: ${{ secrets.AMAZON_ASIN_M5_1 }}
+          AMAZON_ASIN_M5_2: ${{ secrets.AMAZON_ASIN_M5_2 }}
+          COSTCO_US_M4_URL: ${{ secrets.COSTCO_US_M4_URL }}
+          COSTCO_US_M5_URL: ${{ secrets.COSTCO_US_M5_URL }}
+          COSTCO_CA_M4_URL: ${{ secrets.COSTCO_CA_M4_URL }}
+          COSTCO_CA_M5_URL: ${{ secrets.COSTCO_CA_M5_URL }}
+        run: npx tsx automation/price-monitor/run.ts
