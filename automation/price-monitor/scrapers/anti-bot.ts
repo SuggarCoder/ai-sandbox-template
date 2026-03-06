@@ -51,7 +51,13 @@ export async function setupPageForScraping(page: any) {
 
 export async function gotoWithBackoff(page: any, url: string, label: string) {
   let lastError: unknown;
-  const attempts: Array<"domcontentloaded" | "load" | "commit"> = ["domcontentloaded", "load", "commit"];
+  const attempts: Array<"domcontentloaded" | "load" | "commit" | "domcontentloaded" | "load"> = [
+    "domcontentloaded",
+    "load",
+    "commit",
+    "domcontentloaded",
+    "load"
+  ];
 
   for (let i = 0; i < attempts.length; i += 1) {
     try {
@@ -67,6 +73,20 @@ export async function gotoWithBackoff(page: any, url: string, label: string) {
 
       return;
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("ERR_ABORTED")) {
+        // Navigation may be interrupted by client-side redirects. If page has loaded, continue.
+        const currentUrl = page.url?.() ?? "";
+        if (currentUrl && currentUrl !== "about:blank") {
+          try {
+            await page.waitForLoadState("domcontentloaded", { timeout: 6000 });
+            return;
+          } catch {
+            // Continue retries when load state is still unstable.
+          }
+        }
+      }
+
       lastError = error;
       const backoff = 700 * (i + 1) + Math.floor(Math.random() * 600);
       await page.waitForTimeout(backoff);
