@@ -10,6 +10,9 @@ This folder contains a TypeScript skeleton for scraping and storing MacBook Pro 
   - Costco CA postal code: `M4Y0G7`
 - Only store records where `price_usd <= 2300`
   - CAD is converted using `CAD_TO_USD` (default `0.74`)
+- Anti-bot hardening:
+  - `playwright-extra` + `puppeteer-extra-plugin-stealth`
+  - navigation backoff + block-page detection + jitter delays
 
 ## Run locally
 

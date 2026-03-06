@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { logger } from "../config";
+import { gotoWithBackoff, randomPause } from "./anti-bot";
 import type { ScrapeRecord } from "../types";
 import type { BrowserSession } from "./playwright-runtime";
 
@@ -70,23 +71,6 @@ async function parseCostcoPrice(page: any): Promise<number | null> {
   return null;
 }
 
-async function gotoWithRetry(page: any, url: string) {
-  let lastError: unknown;
-  const attempts: Array<"domcontentloaded" | "load" | "commit"> = ["domcontentloaded", "load", "commit"];
-
-  for (const waitUntil of attempts) {
-    try {
-      await page.goto(url, { waitUntil, timeout: 45000 });
-      return;
-    } catch (error) {
-      lastError = error;
-      await page.waitForTimeout(900);
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error(`Failed to navigate: ${url}`);
-}
-
 async function scrapeCostcoPlatform(
   session: BrowserSession,
   platform: "Costco_US" | "Costco_CA",
@@ -98,9 +82,10 @@ async function scrapeCostcoPlatform(
   for (const target of targets) {
     try {
       const row = await session.withPage(async (page) => {
-        await gotoWithRetry(page, target.url);
+        await gotoWithBackoff(page, target.url, platform);
+        await randomPause(page, 500, 1600);
         await setZipOrPostalCode(page, platform);
-        await page.waitForTimeout(1200);
+        await randomPause(page, 800, 2200);
 
         const title =
           (await page.locator("h1").first().textContent().catch(() => ""))?.trim() ?? `Unknown ${platform} Item`;
