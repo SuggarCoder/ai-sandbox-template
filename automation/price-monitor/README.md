@@ -1,6 +1,6 @@
 # MacBook Pro Price Monitor (Skeleton)
 
-This folder contains a TypeScript skeleton for scraping and storing MacBook Pro M4 Pro prices.
+This folder contains a TypeScript skeleton for scraping and storing MacBook Pro prices.
 
 ## Rules implemented
 
@@ -8,9 +8,10 @@ This folder contains a TypeScript skeleton for scraping and storing MacBook Pro 
 - Region hints:
   - Costco US zip: `95014`
   - Costco CA postal code: `M4Y0G7`
-- Only store records where `price_usd <= 2300`
-- Only keep products matching `M4 Pro`
-  - CAD is converted using `CAD_TO_USD` (default `0.74`)
+- No model/price gate before insert:
+  - Any configured source URL result is eligible for insert
+  - `model` is inferred from title (`M4 Pro` / `M5` / `M5 Pro`), fallback `UNKNOWN`
+  - CAD is converted using `CAD_TO_USD` (default `0.74`) for `price_usd` field
 - Anti-bot hardening:
   - `playwright-extra` + `puppeteer-extra-plugin-stealth`
   - navigation backoff + block-page detection + jitter delays

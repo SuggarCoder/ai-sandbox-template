@@ -3,7 +3,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import type { NormalizedRecord } from "./types";
 
 type PriceInsertRow = {
-  model: "M4_Pro";
+  model: "M4_Pro" | "M5" | "M5_Pro" | "UNKNOWN";
   platform: "Costco_US" | "Costco_CA" | "Microcenter";
   title: string;
   price: number;
