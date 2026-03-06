@@ -33,7 +33,6 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CAD_TO_USD: ${{ secrets.CAD_TO_USD }}
-          AMAZON: ${{ secrets.AMAZON }}
           COSTCO_US: ${{ secrets.COSTCO_US }}
           COSTCO_CA: ${{ secrets.COSTCO_CA }}
           MICROCENTER: ${{ secrets.MICROCENTER }}

@@ -1,5 +1,4 @@
 import { normalizeAndFilter } from "./filters";
-import { scrapeAmazon } from "./scrapers/amazon";
 import { scrapeCostcoCa, scrapeCostcoUs } from "./scrapers/costco";
 import { scrapeMicrocenter } from "./scrapers/microcenter";
 import { createBrowserSession } from "./scrapers/playwright-runtime";
@@ -10,23 +9,15 @@ export async function collectPriceRecords(logger: Logger): Promise<NormalizedRec
 
   try {
     const settled = await Promise.allSettled([
-      scrapeAmazon(session),
       scrapeCostcoUs(session),
       scrapeCostcoCa(session),
       scrapeMicrocenter(session)
     ]);
 
-    const [amazonResult, costcoUsResult, costcoCaResult, microcenterResult] = settled;
-    const amazon = amazonResult.status === "fulfilled" ? amazonResult.value : [];
+    const [costcoUsResult, costcoCaResult, microcenterResult] = settled;
     const costcoUs = costcoUsResult.status === "fulfilled" ? costcoUsResult.value : [];
     const costcoCa = costcoCaResult.status === "fulfilled" ? costcoCaResult.value : [];
     const microcenter = microcenterResult.status === "fulfilled" ? microcenterResult.value : [];
-
-    if (amazonResult.status === "rejected") {
-      logger.warn("Amazon scrape failed, continue with other platforms", {
-        reason: amazonResult.reason instanceof Error ? amazonResult.reason.message : "Unknown"
-      });
-    }
 
     if (costcoUsResult.status === "rejected") {
       logger.warn("Costco US scrape failed, continue with other platforms", {
@@ -46,11 +37,10 @@ export async function collectPriceRecords(logger: Logger): Promise<NormalizedRec
       });
     }
 
-    const all = [...amazon, ...costcoUs, ...costcoCa, ...microcenter];
+    const all = [...costcoUs, ...costcoCa, ...microcenter];
     const filtered = normalizeAndFilter(all);
 
     logger.info("Scrape completed", {
-      amazonCount: amazon.length,
       costcoUsCount: costcoUs.length,
       costcoCaCount: costcoCa.length,
       microcenterCount: microcenter.length,

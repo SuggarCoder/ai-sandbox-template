@@ -35,23 +35,20 @@ async function setZipOrPostalCode(page: any, platform: "Costco_US" | "Costco_CA"
   }
 }
 
-async function parseCostcoPrice(page: any): Promise<number | null> {
-  const selectors = [
-    "[automation-id='productPriceOutput']",
-    ".price-item--price",
-    ".your-price .value"
-  ];
+async function parseCostcoCurrentPrice(page: any): Promise<number | null> {
+  const text = await page
+    .locator("[data-testid='Text_single-price-whole-value']")
+    .first()
+    .textContent()
+    .catch(() => null);
 
-  for (const selector of selectors) {
-    const text = await page.locator(selector).first().textContent().catch(() => null);
-    if (!text) {
-      continue;
-    }
+  if (!text) {
+    return null;
+  }
 
-    const value = Number(text.replace(/[^\d.]/g, ""));
-    if (Number.isFinite(value) && value > 0) {
-      return value;
-    }
+  const value = Number(text.replace(/[^\d.]/g, ""));
+  if (Number.isFinite(value) && value > 0) {
+    return value;
   }
 
   return null;
@@ -74,14 +71,19 @@ async function scrapeCostcoPlatform(
         await randomPause(page, 800, 2200);
 
         const title =
-          (await page.locator("h1").first().textContent().catch(() => ""))?.trim() ?? `Unknown ${platform} Item`;
-        const price = await parseCostcoPrice(page);
-        const stockText = (await page.textContent("body").catch(() => ""))?.toLowerCase() ?? "";
+          (await page.locator("[data-testid='Text_brand-name']").first().textContent().catch(() => ""))?.trim() ??
+          `Unknown ${platform} Item`;
 
+        const price = await parseCostcoCurrentPrice(page);
         if (!price) {
           logger.warn("Costco price not found", { url: target.url, platform });
           return null;
         }
+
+        const statusText =
+          (await page.locator("[data-testid='Text_zipcode-status']").first().textContent().catch(() => ""))
+            ?.trim()
+            .toLowerCase() ?? "";
 
         return {
           platform,
@@ -89,7 +91,7 @@ async function scrapeCostcoPlatform(
           price,
           currency,
           url: target.url,
-          inStock: !/out of stock|sold out|unavailable/.test(stockText),
+          inStock: statusText.includes("available"),
           scrapedAt: new Date().toISOString()
         } satisfies ScrapeRecord;
       });
