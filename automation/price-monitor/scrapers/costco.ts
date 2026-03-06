@@ -71,6 +71,12 @@ async function scrapeCostcoUsPage(page: any, url: string): Promise<ScrapeRecord 
 }
 
 async function scrapeCostcoCaPage(page: any, url: string): Promise<ScrapeRecord | null> {
+  await page
+    .waitForSelector("h1[itemprop='name'][automation-id='productName'], span[automation-id='productPriceOutput']", {
+      timeout: 9000
+    })
+    .catch(() => null);
+
   const title =
     (await page
       .locator("h1[itemprop='name'][automation-id='productName']")
@@ -99,8 +105,16 @@ async function scrapeCostcoCaPage(page: any, url: string): Promise<ScrapeRecord 
   const price = Number(priceText.replace(/[^\d.]/g, ""));
 
   if (!Number.isFinite(price) || price <= 0) {
+    const bodyText = (await page.textContent("body").catch(() => "")) || "";
+    const pageTitle = (await page.title().catch(() => "")) || "";
+    const firstH1 = (await page.locator("h1").first().textContent().catch(() => ""))?.trim() || "";
+    const challenge = /access denied|forbidden|captcha|blocked|verify/i.test(bodyText);
+
     const snapshot = {
       finalUrl: page.url?.() ?? "",
+      pageTitle,
+      firstH1,
+      challenge,
       title,
       priceByAutomationId:
         (await page.locator("span[automation-id='productPriceOutput']").first().textContent().catch(() => ""))?.trim() || "",
