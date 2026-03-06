@@ -40,9 +40,13 @@ async function scrapeCostcoUsPage(page: any, url: string): Promise<ScrapeRecord 
     (await page.locator("[data-testid='Text_brand-name']").first().textContent().catch(() => ""))?.trim() ||
     "Unknown Costco_US Item";
 
-  const priceText =
+  let priceText =
     (await page.locator("[data-testid='Text_single-price-whole-value']").first().textContent().catch(() => ""))?.trim() ||
     "";
+  if (!priceText) {
+    priceText =
+      (await page.locator("[automation-id='productPriceOutput']").first().textContent().catch(() => ""))?.trim() || "";
+  }
   const price = Number(priceText.replace(/[^\d.]/g, ""));
 
   if (!Number.isFinite(price) || price <= 0) {
@@ -74,16 +78,40 @@ async function scrapeCostcoCaPage(page: any, url: string): Promise<ScrapeRecord 
       .textContent()
       .catch(() => ""))?.trim() || "Unknown Costco_CA Item";
 
-  const priceText =
+  await page.waitForTimeout(1200);
+
+  let priceText =
     (await page
       .locator("span[automation-id='productPriceOutput']")
       .first()
       .textContent()
       .catch(() => ""))?.trim() || "";
+  if (!priceText) {
+    priceText =
+      (await page.locator("[data-testid='Text_single-price-whole-value']").first().textContent().catch(() => ""))?.trim() ||
+      "";
+  }
+
+  if (!priceText) {
+    priceText = (await page.locator("meta[itemprop='price']").first().getAttribute("content").catch(() => "")) || "";
+  }
+
   const price = Number(priceText.replace(/[^\d.]/g, ""));
 
   if (!Number.isFinite(price) || price <= 0) {
-    logger.warn("Costco CA price not found", { url });
+    const snapshot = {
+      finalUrl: page.url?.() ?? "",
+      title,
+      priceByAutomationId:
+        (await page.locator("span[automation-id='productPriceOutput']").first().textContent().catch(() => ""))?.trim() || "",
+      priceByTestId:
+        (await page.locator("[data-testid='Text_single-price-whole-value']").first().textContent().catch(() => ""))?.trim() ||
+        "",
+      metaPrice: (await page.locator("meta[itemprop='price']").first().getAttribute("content").catch(() => "")) || "",
+      zipcodeStatus:
+        (await page.locator("[data-testid='Text_zipcode-status']").first().textContent().catch(() => ""))?.trim() || ""
+    };
+    logger.warn("Costco CA price not found", { url, ...snapshot });
     return null;
   }
 
