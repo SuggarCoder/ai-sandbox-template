@@ -1,27 +1,13 @@
 import { MAX_PRICE_USD } from "./config";
 import { toUsd } from "./fx";
-import type { Model, NormalizedRecord, ScrapeRecord } from "./types";
+import type { NormalizedRecord, ScrapeRecord } from "./types";
 
 const m4Pattern = /\bm4\s*pro\b/i;
-const m5Pattern = /\bm5\s*pro\b/i;
-
-export function inferModel(title: string, fallback?: Model): Model | null {
-  if (m4Pattern.test(title)) {
-    return "M4_Pro";
-  }
-
-  if (m5Pattern.test(title)) {
-    return "M5_Pro";
-  }
-
-  return fallback ?? null;
-}
 
 export function normalizeAndFilter(records: ScrapeRecord[]): NormalizedRecord[] {
   return records
     .map((record) => {
-      const model = inferModel(record.title, record.model);
-      if (!model) {
+      if (!m4Pattern.test(record.title)) {
         return null;
       }
 
@@ -32,7 +18,7 @@ export function normalizeAndFilter(records: ScrapeRecord[]): NormalizedRecord[] 
 
       return {
         ...record,
-        model,
+        model: "M4_Pro",
         priceUsd
       };
     })
