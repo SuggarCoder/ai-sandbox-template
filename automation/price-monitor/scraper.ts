@@ -38,17 +38,17 @@ export async function collectPriceRecords(logger: Logger): Promise<NormalizedRec
     }
 
     const all = [...costcoUs, ...costcoCa, ...microcenter];
-    const filtered = normalizeAndFilter(all);
+    const normalized = normalizeAndFilter(all);
 
     logger.info("Scrape completed", {
       costcoUsCount: costcoUs.length,
       costcoCaCount: costcoCa.length,
       microcenterCount: microcenter.length,
       rawCount: all.length,
-      filteredCount: filtered.length
+      normalizedCount: normalized.length
     });
 
-    return filtered;
+    return normalized;
   } finally {
     await session.close();
   }

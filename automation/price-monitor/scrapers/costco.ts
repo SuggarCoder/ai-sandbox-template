@@ -35,74 +35,92 @@ async function setZipOrPostalCode(page: any, platform: "Costco_US" | "Costco_CA"
   }
 }
 
-async function parseCostcoCurrentPrice(page: any): Promise<number | null> {
-  const text = await page
-    .locator("[data-testid='Text_single-price-whole-value']")
-    .first()
-    .textContent()
-    .catch(() => null);
+async function scrapeCostcoUsPage(page: any, url: string): Promise<ScrapeRecord | null> {
+  const title =
+    (await page.locator("[data-testid='Text_brand-name']").first().textContent().catch(() => ""))?.trim() ||
+    "Unknown Costco_US Item";
 
-  if (!text) {
+  const priceText =
+    (await page.locator("[data-testid='Text_single-price-whole-value']").first().textContent().catch(() => ""))?.trim() ||
+    "";
+  const price = Number(priceText.replace(/[^\d.]/g, ""));
+
+  if (!Number.isFinite(price) || price <= 0) {
+    logger.warn("Costco US price not found", { url });
     return null;
   }
 
-  const value = Number(text.replace(/[^\d.]/g, ""));
-  if (Number.isFinite(value) && value > 0) {
-    return value;
-  }
+  const statusText =
+    (await page.locator("[data-testid='Text_zipcode-status']").first().textContent().catch(() => ""))
+      ?.trim()
+      .toLowerCase() || "";
 
-  return null;
+  return {
+    platform: "Costco_US",
+    title,
+    price,
+    currency: "USD",
+    url,
+    inStock: statusText.includes("available"),
+    scrapedAt: new Date().toISOString()
+  };
 }
 
-async function scrapeCostcoPlatform(
-  session: BrowserSession,
-  platform: "Costco_US" | "Costco_CA",
-  targets: Array<{ url: string }>
-): Promise<ScrapeRecord[]> {
-  const results: ScrapeRecord[] = [];
-  const currency = platform === "Costco_CA" ? "CAD" : "USD";
+async function scrapeCostcoCaPage(page: any, url: string): Promise<ScrapeRecord | null> {
+  const title =
+    (await page
+      .locator("h1[itemprop='name'][automation-id='productName']")
+      .first()
+      .textContent()
+      .catch(() => ""))?.trim() || "Unknown Costco_CA Item";
 
-  for (const target of targets) {
+  const priceText =
+    (await page
+      .locator("span[automation-id='productPriceOutput']")
+      .first()
+      .textContent()
+      .catch(() => ""))?.trim() || "";
+  const price = Number(priceText.replace(/[^\d.]/g, ""));
+
+  if (!Number.isFinite(price) || price <= 0) {
+    logger.warn("Costco CA price not found", { url });
+    return null;
+  }
+
+  return {
+    platform: "Costco_CA",
+    title,
+    price,
+    currency: "CAD",
+    url,
+    inStock: true,
+    scrapedAt: new Date().toISOString()
+  };
+}
+
+async function scrapeCostcoUs(session: BrowserSession): Promise<ScrapeRecord[]> {
+  const results: ScrapeRecord[] = [];
+  if (costcoUsTargets.length === 0) {
+    logger.warn("Costco US targets missing. Check COSTCO_US env.");
+    return results;
+  }
+
+  for (const target of costcoUsTargets) {
     try {
       const row = await session.withPage(async (page) => {
-        await gotoWithBackoff(page, target.url, platform);
+        await gotoWithBackoff(page, target.url, "Costco_US");
         await randomPause(page, 500, 1600);
-        await setZipOrPostalCode(page, platform);
+        await setZipOrPostalCode(page, "Costco_US");
         await randomPause(page, 800, 2200);
-
-        const title =
-          (await page.locator("[data-testid='Text_brand-name']").first().textContent().catch(() => ""))?.trim() ??
-          `Unknown ${platform} Item`;
-
-        const price = await parseCostcoCurrentPrice(page);
-        if (!price) {
-          logger.warn("Costco price not found", { url: target.url, platform });
-          return null;
-        }
-
-        const statusText =
-          (await page.locator("[data-testid='Text_zipcode-status']").first().textContent().catch(() => ""))
-            ?.trim()
-            .toLowerCase() ?? "";
-
-        return {
-          platform,
-          title,
-          price,
-          currency,
-          url: target.url,
-          inStock: statusText.includes("available"),
-          scrapedAt: new Date().toISOString()
-        } satisfies ScrapeRecord;
+        return scrapeCostcoUsPage(page, target.url);
       });
 
       if (row) {
         results.push(row);
       }
     } catch (error) {
-      logger.warn("Costco scrape target failed", {
+      logger.warn("Costco US scrape target failed", {
         url: target.url,
-        platform,
         reason: error instanceof Error ? error.message : "Unknown"
       });
     }
@@ -111,16 +129,35 @@ async function scrapeCostcoPlatform(
   return results;
 }
 
-export async function scrapeCostcoUs(session: BrowserSession): Promise<ScrapeRecord[]> {
-  if (costcoUsTargets.length === 0) {
-    logger.warn("Costco US targets missing. Check COSTCO_US env.");
-  }
-  return scrapeCostcoPlatform(session, "Costco_US", costcoUsTargets);
-}
-
-export async function scrapeCostcoCa(session: BrowserSession): Promise<ScrapeRecord[]> {
+async function scrapeCostcoCa(session: BrowserSession): Promise<ScrapeRecord[]> {
+  const results: ScrapeRecord[] = [];
   if (costcoCaTargets.length === 0) {
     logger.warn("Costco CA targets missing. Check COSTCO_CA env.");
+    return results;
   }
-  return scrapeCostcoPlatform(session, "Costco_CA", costcoCaTargets);
+
+  for (const target of costcoCaTargets) {
+    try {
+      const row = await session.withPage(async (page) => {
+        await gotoWithBackoff(page, target.url, "Costco_CA");
+        await randomPause(page, 500, 1600);
+        await setZipOrPostalCode(page, "Costco_CA");
+        await randomPause(page, 800, 2200);
+        return scrapeCostcoCaPage(page, target.url);
+      });
+
+      if (row) {
+        results.push(row);
+      }
+    } catch (error) {
+      logger.warn("Costco CA scrape target failed", {
+        url: target.url,
+        reason: error instanceof Error ? error.message : "Unknown"
+      });
+    }
+  }
+
+  return results;
 }
+
+export { scrapeCostcoUs, scrapeCostcoCa };

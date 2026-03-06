@@ -11,8 +11,7 @@ async function main() {
   const result = await upsertPriceRecords(records);
 
   logger.info("Price monitor finished", {
-    inserted: result.inserted,
-    acceptedThresholdUsd: 2300
+    inserted: result.inserted
   });
 }
 

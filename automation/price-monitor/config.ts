@@ -2,7 +2,6 @@ import type { Logger } from "./types";
 
 const requiredEnv = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const;
 
-export const MAX_PRICE_USD = 2300;
 export const CAD_TO_USD = Number(process.env.CAD_TO_USD ?? "0.74");
 
 export function assertRuntimeEnv() {
