@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { logger } from "../config";
+import { gotoWithBackoff, isBlockedContent, randomPause } from "./anti-bot";
 import type { ScrapeRecord } from "../types";
 import type { BrowserSession } from "./playwright-runtime";
 
@@ -44,23 +45,6 @@ function isCaptcha(pageContent: string) {
   return /captcha|enter the characters you see/i.test(pageContent);
 }
 
-async function gotoWithRetry(page: any, url: string) {
-  let lastError: unknown;
-  const attempts: Array<"domcontentloaded" | "load" | "commit"> = ["domcontentloaded", "load", "commit"];
-
-  for (const waitUntil of attempts) {
-    try {
-      await page.goto(url, { waitUntil, timeout: 45000 });
-      return;
-    } catch (error) {
-      lastError = error;
-      await page.waitForTimeout(900);
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error(`Failed to navigate: ${url}`);
-}
-
 export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecord[]> {
   const results: ScrapeRecord[] = [];
   if (activeAmazonTargets.length === 0) {
@@ -75,16 +59,16 @@ export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecor
       const row = await session.withPage(async (page) => {
         let retries = 0;
         while (retries < 3) {
-          await gotoWithRetry(page, url);
+          await gotoWithBackoff(page, url, "amazon");
           const html = await page.content();
 
-          if (isCaptcha(html)) {
+          if (isCaptcha(html) || isBlockedContent(html)) {
             retries += 1;
-            await page.waitForTimeout(1200 * retries);
+            await randomPause(page, 1000, 2400 * retries);
             continue;
           }
 
-          await page.waitForTimeout(1000);
+          await randomPause(page, 700, 1800);
           const title =
             (await page.locator("#productTitle").first().textContent().catch(() => ""))?.trim() ??
             "Unknown Amazon Item";
