@@ -1,6 +1,6 @@
 import type { Platform } from "../types";
 
-type SourceEnv = "COSTCO_US" | "COSTCO_CA" | "MICROCENTER";
+type SourceEnv = "COSTCO_US" | "MICROCENTER";
 
 type SourceTarget = {
   platform: Platform;
@@ -9,7 +9,6 @@ type SourceTarget = {
 
 const platformFromEnv: Record<SourceEnv, Platform> = {
   COSTCO_US: "Costco_US",
-  COSTCO_CA: "Costco_CA",
   MICROCENTER: "Microcenter"
 };
 

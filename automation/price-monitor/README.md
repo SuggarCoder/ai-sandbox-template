@@ -4,10 +4,9 @@ This folder contains a TypeScript skeleton for scraping and storing MacBook Pro 
 
 ## Rules implemented
 
-- Platforms: Costco US, Costco CA, Microcenter
+- Platforms: Costco US, Microcenter
 - Region hints:
   - Costco US zip: `95014`
-  - Costco CA postal code: `M4Y0G7`
 - No model/price gate before insert:
   - Any configured source URL result is eligible for insert
   - `model` is inferred from title (`M4 Pro` / `M5` / `M5 Pro`), fallback `UNKNOWN`
@@ -30,7 +29,6 @@ npx tsx automation/price-monitor/run.ts
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `CAD_TO_USD` (optional, default 0.74)
 - `COSTCO_US`
-- `COSTCO_CA`
 - `MICROCENTER`
 
 Each source variable accepts comma-separated URLs.

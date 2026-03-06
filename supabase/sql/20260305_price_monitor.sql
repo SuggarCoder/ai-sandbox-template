@@ -1,7 +1,7 @@
 create table if not exists public.price_records (
   id uuid primary key default gen_random_uuid(),
   model text not null check (model in ('M4_Pro', 'M5', 'M5_Pro', 'UNKNOWN')),
-  platform text not null check (platform in ('Costco_US', 'Costco_CA', 'Microcenter')),
+  platform text not null check (platform in ('Costco_US', 'Microcenter')),
   title text not null,
   price numeric(10,2) not null check (price > 0),
   price_usd numeric(10,2) not null check (price_usd > 0),
@@ -78,7 +78,7 @@ begin
 
   alter table public.price_records
     add constraint price_records_platform_check
-    check (platform in ('Costco_US', 'Costco_CA', 'Microcenter'));
+    check (platform in ('Costco_US', 'Microcenter'));
 exception
   when duplicate_object then null;
 end $$;
