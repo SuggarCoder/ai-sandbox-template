@@ -17,8 +17,7 @@ type PriceInsertRow = {
 
 function toInsertRows(records: NormalizedRecord[]): PriceInsertRow[] {
   return records.map((record) => ({
-    // DB compatibility: some environments still enforce model in ('M4_Pro','M5_Pro').
-    model: record.model === "M5" ? "M5_Pro" : record.model,
+    model: record.model,
     platform: record.platform,
     title: record.title,
     price: record.price,
