@@ -10,15 +10,12 @@ function inferModel(title: string) {
     return "M4_Pro" as const;
   }
 
-  if (m5ProPattern.test(title)) {
+  if (m5ProPattern.test(title) || m5Pattern.test(title)) {
     return "M5_Pro" as const;
   }
 
-  if (m5Pattern.test(title)) {
-    return "M5" as const;
-  }
-
-  return "UNKNOWN" as const;
+  // Compatibility default for existing DB check constraints.
+  return "M5_Pro" as const;
 }
 
 export function normalizeAndFilter(records: ScrapeRecord[]): NormalizedRecord[] {
