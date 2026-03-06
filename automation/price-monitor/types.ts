@@ -1,6 +1,6 @@
 export type Platform = "Costco_US" | "Microcenter";
 
-export type Model = "M4_Pro" | "M5_Pro";
+export type Model = "M4_Pro" | "M5" | "M5_Pro";
 
 export type Currency = "USD" | "CAD";
 

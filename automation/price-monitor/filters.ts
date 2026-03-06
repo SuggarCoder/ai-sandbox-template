@@ -10,11 +10,14 @@ function inferModel(title: string) {
     return "M4_Pro" as const;
   }
 
-  if (m5ProPattern.test(title) || m5Pattern.test(title)) {
+  if (m5ProPattern.test(title)) {
     return "M5_Pro" as const;
   }
 
-  // Compatibility default for existing DB check constraints.
+  if (m5Pattern.test(title)) {
+    return "M5" as const;
+  }
+
   return "M5_Pro" as const;
 }
 
