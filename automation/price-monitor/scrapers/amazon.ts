@@ -1,22 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { logger } from "../config";
 import { gotoWithBackoff, isBlockedContent, randomPause } from "./anti-bot";
+import { getSourceTargets } from "./source-targets";
 import type { ScrapeRecord } from "../types";
 import type { BrowserSession } from "./playwright-runtime";
 
-type AmazonTarget = {
-  asin: string;
-  hintModel?: "M4_Pro" | "M5_Pro";
-};
-
-const amazonTargets = [
-  { asin: process.env.AMAZON_ASIN_M4_1 ?? "", hintModel: "M4_Pro" },
-  { asin: process.env.AMAZON_ASIN_M4_2 ?? "", hintModel: "M4_Pro" },
-  { asin: process.env.AMAZON_ASIN_M5_1 ?? "", hintModel: "M5_Pro" },
-  { asin: process.env.AMAZON_ASIN_M5_2 ?? "", hintModel: "M5_Pro" }
-] satisfies AmazonTarget[];
-
-const activeAmazonTargets = amazonTargets.filter((target) => Boolean(target.asin));
+const amazonTargets = getSourceTargets("AMAZON");
 
 async function parseAmazonPrice(page: any): Promise<number | null> {
   const selectors = [
@@ -47,13 +36,13 @@ function isCaptcha(pageContent: string) {
 
 export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecord[]> {
   const results: ScrapeRecord[] = [];
-  if (activeAmazonTargets.length === 0) {
-    logger.warn("Amazon targets missing. Check AMAZON_ASIN_* secrets.");
+  if (amazonTargets.length === 0) {
+    logger.warn("Amazon targets missing. Check AMAZON env.");
     return results;
   }
 
-  for (const target of activeAmazonTargets) {
-    const url = `https://www.amazon.com/dp/${target.asin}`;
+  for (const target of amazonTargets) {
+    const url = target.url;
 
     try {
       const row = await session.withPage(async (page) => {
@@ -83,7 +72,6 @@ export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecor
           }
 
           return {
-            model: target.hintModel ?? "M4_Pro",
             platform: "Amazon",
             title,
             price,
@@ -106,7 +94,6 @@ export async function scrapeAmazon(session: BrowserSession): Promise<ScrapeRecor
         url,
         reason: error instanceof Error ? error.message : "Unknown"
       });
-      continue;
     }
   }
 
