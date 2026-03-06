@@ -4,7 +4,7 @@ import type { NormalizedRecord } from "./types";
 
 type PriceInsertRow = {
   model: "M4_Pro" | "M5_Pro";
-  platform: "Amazon" | "Costco_US" | "Costco_CA";
+  platform: "Amazon" | "Costco_US" | "Costco_CA" | "Microcenter";
   title: string;
   price: number;
   price_usd: number;

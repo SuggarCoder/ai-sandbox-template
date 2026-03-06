@@ -1,11 +1,11 @@
-export type Platform = "Amazon" | "Costco_US" | "Costco_CA";
+export type Platform = "Amazon" | "Costco_US" | "Costco_CA" | "Microcenter";
 
 export type Model = "M4_Pro" | "M5_Pro";
 
 export type Currency = "USD" | "CAD";
 
 export type ScrapeRecord = {
-  model: Model;
+  model?: Model;
   platform: Platform;
   title: string;
   price: number;
@@ -16,7 +16,8 @@ export type ScrapeRecord = {
   scrapedAt: string;
 };
 
-export type NormalizedRecord = ScrapeRecord & {
+export type NormalizedRecord = Omit<ScrapeRecord, "model"> & {
+  model: Model;
   priceUsd: number;
 };
 

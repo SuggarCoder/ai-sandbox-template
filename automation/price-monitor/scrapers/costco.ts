@@ -1,26 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { logger } from "../config";
 import { gotoWithBackoff, randomPause } from "./anti-bot";
+import { getSourceTargets } from "./source-targets";
 import type { ScrapeRecord } from "../types";
 import type { BrowserSession } from "./playwright-runtime";
 
-type CostcoTarget = {
-  url: string;
-  hintModel?: "M4_Pro" | "M5_Pro";
-};
-
-const costcoUsTargets = [
-  { url: process.env.COSTCO_US_M4_URL ?? "", hintModel: "M4_Pro" },
-  { url: process.env.COSTCO_US_M5_URL ?? "", hintModel: "M5_Pro" }
-] satisfies CostcoTarget[];
-
-const costcoCaTargets = [
-  { url: process.env.COSTCO_CA_M4_URL ?? "", hintModel: "M4_Pro" },
-  { url: process.env.COSTCO_CA_M5_URL ?? "", hintModel: "M5_Pro" }
-] satisfies CostcoTarget[];
-
-const activeCostcoUsTargets = costcoUsTargets.filter((target) => Boolean(target.url));
-const activeCostcoCaTargets = costcoCaTargets.filter((target) => Boolean(target.url));
+const costcoUsTargets = getSourceTargets("COSTCO_US");
+const costcoCaTargets = getSourceTargets("COSTCO_CA");
 
 async function setZipOrPostalCode(page: any, platform: "Costco_US" | "Costco_CA") {
   const zipcode = platform === "Costco_US" ? "95014" : "M4Y0G7";
@@ -74,7 +60,7 @@ async function parseCostcoPrice(page: any): Promise<number | null> {
 async function scrapeCostcoPlatform(
   session: BrowserSession,
   platform: "Costco_US" | "Costco_CA",
-  targets: CostcoTarget[]
+  targets: Array<{ url: string }>
 ): Promise<ScrapeRecord[]> {
   const results: ScrapeRecord[] = [];
   const currency = platform === "Costco_CA" ? "CAD" : "USD";
@@ -98,7 +84,6 @@ async function scrapeCostcoPlatform(
         }
 
         return {
-          model: target.hintModel ?? "M4_Pro",
           platform,
           title,
           price,
@@ -118,7 +103,6 @@ async function scrapeCostcoPlatform(
         platform,
         reason: error instanceof Error ? error.message : "Unknown"
       });
-      continue;
     }
   }
 
@@ -126,15 +110,15 @@ async function scrapeCostcoPlatform(
 }
 
 export async function scrapeCostcoUs(session: BrowserSession): Promise<ScrapeRecord[]> {
-  if (activeCostcoUsTargets.length === 0) {
-    logger.warn("Costco US targets missing. Check COSTCO_US_* secrets.");
+  if (costcoUsTargets.length === 0) {
+    logger.warn("Costco US targets missing. Check COSTCO_US env.");
   }
-  return scrapeCostcoPlatform(session, "Costco_US", activeCostcoUsTargets);
+  return scrapeCostcoPlatform(session, "Costco_US", costcoUsTargets);
 }
 
 export async function scrapeCostcoCa(session: BrowserSession): Promise<ScrapeRecord[]> {
-  if (activeCostcoCaTargets.length === 0) {
-    logger.warn("Costco CA targets missing. Check COSTCO_CA_* secrets.");
+  if (costcoCaTargets.length === 0) {
+    logger.warn("Costco CA targets missing. Check COSTCO_CA env.");
   }
-  return scrapeCostcoPlatform(session, "Costco_CA", activeCostcoCaTargets);
+  return scrapeCostcoPlatform(session, "Costco_CA", costcoCaTargets);
 }
