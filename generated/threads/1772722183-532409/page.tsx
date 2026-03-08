@@ -40,29 +40,50 @@ type ChartPoint = {
 const targetDefinitions: Array<{
   key: TargetKey;
   displayLabel: string;
-  model: string;
-  specs: string;
+  matches: (product: ProductRow) => boolean;
   color: string;
 }> = [
   {
     key: "m4_pro_24_512",
     displayLabel: "MacBook Pro (14), M4 Pro, 24GB RAM, 512GB SSD",
-    model: "MacBook Pro M4 Pro",
-    specs: "24GB/512GB",
+    matches: (product) => {
+      const normalized = normalizeValue(`${product.model} ${product.specs}`);
+      return (
+        normalized.includes("m4pro") &&
+        normalized.includes("24gb") &&
+        (normalized.includes("512gb") || normalized.includes("512g"))
+      );
+    },
     color: "#0ea5e9"
   },
   {
     key: "m5_16_512",
     displayLabel: "MacBook Pro (14), M5, 16GB RAM, 512GB SSD",
-    model: "MacBook Pro M5",
-    specs: "16GB/512GB",
+    matches: (product) => {
+      const normalized = normalizeValue(`${product.model} ${product.specs}`);
+      return (
+        normalized.includes("m5") &&
+        !normalized.includes("m5pro") &&
+        normalized.includes("16gb") &&
+        (normalized.includes("512gb") || normalized.includes("512g"))
+      );
+    },
     color: "#f97316"
   },
   {
     key: "m5_pro_24_1tb",
     displayLabel: "MacBook Pro (14), M5 Pro, 24GB RAM, 1TB SSD",
-    model: "MacBook Pro M5 Pro",
-    specs: "24GB/1TB",
+    matches: (product) => {
+      const normalized = normalizeValue(`${product.model} ${product.specs}`);
+      return (
+        normalized.includes("m5pro") &&
+        normalized.includes("24gb") &&
+        (normalized.includes("1tb") ||
+          normalized.includes("1t") ||
+          normalized.includes("1024gb") ||
+          normalized.includes("1024g"))
+      );
+    },
     color: "#22c55e"
   }
 ];
@@ -72,9 +93,7 @@ export const config = {
   description: "Supabase 实时读取 products 与 price_history，展示 3 个指定型号的历史价格。"
 };
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "CNY",
+const currencyNumberFormatter = new Intl.NumberFormat("zh-CN", {
   maximumFractionDigits: 2
 });
 
@@ -90,17 +109,12 @@ function normalizeValue(value: string) {
   return value.replace(/\s+/g, "").toLowerCase();
 }
 
-function getTargetDefinition(product: ProductRow) {
-  const model = normalizeValue(product.model);
-  const specs = normalizeValue(product.specs);
+function formatPrice(value: number) {
+  return `¥${currencyNumberFormatter.format(value)}`;
+}
 
-  return (
-    targetDefinitions.find(
-      (target) =>
-        normalizeValue(target.model) === model &&
-        normalizeValue(target.specs) === specs
-    ) ?? null
-  );
+function getTargetDefinition(product: ProductRow) {
+  return targetDefinitions.find((target) => target.matches(product)) ?? null;
 }
 
 function buildChartPoints(products: EnrichedProduct[]): ChartPoint[] {
@@ -338,11 +352,7 @@ export default async function ThreadPage_1772722183_532409() {
   });
 
   const chartPoints = buildChartPoints(products);
-  const latestRecords = groupedByTarget
-    .map((target) => target.latest)
-    .filter((item): item is HistoryRecordRef => Boolean(item))
-    .sort((a, b) => a.entry.price - b.entry.price);
-  const overallLowest = latestRecords[0] ?? null;
+  const overallLowest = products.length ? getLowestHistoryRecord(products) : null;
 
   return (
     <div className="space-y-6 pb-10">
@@ -370,9 +380,9 @@ export default async function ThreadPage_1772722183_532409() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="border-2 border-primary/20">
           <CardHeader className="pb-3">
-            <CardDescription>当前最低价</CardDescription>
+            <CardDescription>历史最低价</CardDescription>
             <CardTitle className="text-lg">
-              {overallLowest ? currencyFormatter.format(overallLowest.entry.price) : "-"}
+              {overallLowest ? formatPrice(overallLowest.entry.price) : "-"}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
@@ -387,7 +397,7 @@ export default async function ThreadPage_1772722183_532409() {
             <CardHeader className="pb-3">
               <CardDescription>{target.displayLabel}</CardDescription>
               <CardTitle className="text-lg">
-                {target.latest ? currencyFormatter.format(target.latest.entry.price) : "-"}
+                {target.latest ? formatPrice(target.latest.entry.price) : "-"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-xs text-muted-foreground">
@@ -400,7 +410,7 @@ export default async function ThreadPage_1772722183_532409() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {currencyFormatter.format(target.lowest.entry.price)}
+                    {formatPrice(target.lowest.entry.price)}
                   </a>
                 ) : (
                   "-"
@@ -466,7 +476,7 @@ export default async function ThreadPage_1772722183_532409() {
                         <td className="px-2 py-2">{product.platform}</td>
                         <td className="px-2 py-2">{product.region}</td>
                         <td className="px-2 py-2">
-                          {latest ? currencyFormatter.format(latest.price) : "-"}
+                          {latest ? formatPrice(latest.price) : "-"}
                         </td>
                         <td className="px-2 py-2">
                           {latest ? dateFormatter.format(new Date(latest.captured_at)) : "-"}
