@@ -1,0 +1,28 @@
+Task: 作为一个专业的跨境电商数据采集专家，请查询并提取以下 Apple MacBook Pro 指定规格的实时价格与购买链接。
+Targets (Specs):
+MacBook Pro (14), M4 Pro, 24GB RAM, 512GB SSD black
+MacBook Pro (14), M5, 16GB RAM, 512GB SSD
+MacBook Pro (14), M5 Pro, 24GB RAM, 1TGB SSD
+
+Channels:
+Canada: Best Buy (CA), Costco (CA), Amazon (CA)
+USA: Best Buy (US), Costco (US), Amazon (US), Micro Center
+China: 京东 (<http://jd.com|jd.com>) 苹果自营旗舰店
+
+特殊指令（解决 <http://JD.com|JD.com> 访问问题）：如果无法获取JD价格,请尝试通过其公开价格接口、历史缓存或“什么值得买”等第三方价格追踪平台获取今日最新的人民币价格。
+汇率转换：请统一以 [当前日期] 的汇率，将所有价格折算为人民币 (CNY) 进行横向对比。
+
+Constraints:
+Output Format: 严格返回一个 JSON 数组。数组中的每个对象必须包含且仅包含以下字段：platform, region, model, spec, price, url。
+Output JSON Example:
+[
+  {
+    "platform": "Best Buy",
+    "region": "USA",
+    "model": "MacBook Pro M4 Pro",
+    "spec": "24GB/512GB",
+    "price": "1849.99",
+    "url": "https://..."
+  }
+]
+Data Cleaning: 价格必须是字符串格式，不含非数字字符以外的杂质。

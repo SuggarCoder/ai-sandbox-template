@@ -27,6 +27,11 @@ type EnrichedProduct = ProductRow & {
   history: PriceHistoryRow[];
 };
 
+type HistoryRecordRef = {
+  product: EnrichedProduct;
+  entry: PriceHistoryRow;
+};
+
 type ChartPoint = {
   timestamp: string;
   prices: Partial<Record<TargetKey, number>>;
@@ -69,7 +74,7 @@ export const config = {
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "USD",
+  currency: "CNY",
   maximumFractionDigits: 2
 });
 
@@ -114,6 +119,28 @@ function buildChartPoints(products: EnrichedProduct[]): ChartPoint[] {
   }
 
   return [...byTimestamp.values()].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+
+function getLatestHistoryRecord(products: EnrichedProduct[]): HistoryRecordRef | null {
+  const latest = products
+    .flatMap((product) => product.history.map((entry) => ({ product, entry })))
+    .sort((a, b) => b.entry.captured_at.localeCompare(a.entry.captured_at))[0];
+
+  return latest ?? null;
+}
+
+function getLowestHistoryRecord(products: EnrichedProduct[]): HistoryRecordRef | null {
+  const lowest = products
+    .flatMap((product) => product.history.map((entry) => ({ product, entry })))
+    .sort((a, b) => {
+      if (a.entry.price !== b.entry.price) {
+        return a.entry.price - b.entry.price;
+      }
+
+      return a.entry.captured_at.localeCompare(b.entry.captured_at);
+    })[0];
+
+  return lowest ?? null;
 }
 
 function PriceChart({ points }: { points: ChartPoint[] }) {
@@ -287,7 +314,10 @@ export default async function ThreadPage_1772722183_532409() {
   const historyByProductId = new Map<string, PriceHistoryRow[]>();
   for (const item of ((historyData ?? []) as PriceHistoryRow[])) {
     const list = historyByProductId.get(item.product_id) ?? [];
-    list.push(item);
+    list.push({
+      ...item,
+      price: Number(item.price)
+    });
     historyByProductId.set(item.product_id, list);
   }
 
@@ -298,26 +328,19 @@ export default async function ThreadPage_1772722183_532409() {
 
   const groupedByTarget = targetDefinitions.map((target) => {
     const variants = products.filter((product) => product.targetKey === target.key);
-    const latest = [...variants]
-      .flatMap((product) => product.history.map((entry) => ({ product, entry })))
-      .sort((a, b) => b.entry.captured_at.localeCompare(a.entry.captured_at))[0];
-
-    const lowest = [...variants]
-      .flatMap((product) => product.history.map((entry) => entry.price))
-      .sort((a, b) => a - b)[0];
 
     return {
       ...target,
       variants,
-      latest,
-      lowest
+      latest: getLatestHistoryRecord(variants),
+      lowest: getLowestHistoryRecord(variants)
     };
   });
 
   const chartPoints = buildChartPoints(products);
   const latestRecords = groupedByTarget
     .map((target) => target.latest)
-    .filter(Boolean)
+    .filter((item): item is HistoryRecordRef => Boolean(item))
     .sort((a, b) => a.entry.price - b.entry.price);
   const overallLowest = latestRecords[0] ?? null;
 
@@ -368,7 +391,21 @@ export default async function ThreadPage_1772722183_532409() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-xs text-muted-foreground">
-              <div>历史最低: {typeof target.lowest === "number" ? currencyFormatter.format(target.lowest) : "-"}</div>
+              <div>
+                历史最低:{" "}
+                {target.lowest ? (
+                  <a
+                    className="text-primary underline-offset-4 hover:underline"
+                    href={target.lowest.product.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {currencyFormatter.format(target.lowest.entry.price)}
+                  </a>
+                ) : (
+                  "-"
+                )}
+              </div>
               <div>平台数: {target.variants.length}</div>
             </CardContent>
           </Card>
