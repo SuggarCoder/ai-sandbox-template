@@ -2,6 +2,12 @@ import type { ThreadRegistryEntry } from "@/types/thread";
 
 export const threadRegistry: ThreadRegistryEntry[] = [
   {
+    threadId: "1773328643-568989",
+    title: "HN Weekly Top 30 Dashboard",
+    updatedAt: "2026-03-12T15:31:12.547Z",
+    importPage: () => import("./threads/1773328643-568989/page")
+  },
+  {
     threadId: "1772722183-532409",
     title: "MacBook Pro 历史价格 Dashboard",
     updatedAt: "2026-03-07T14:56:30.000Z",
