@@ -6,3 +6,5 @@ coverage
 *.tsbuildinfo
 .codex
 reports
+supabase
+gpas-nh-ac-cn-audit-2026-03-08.tar.gz
